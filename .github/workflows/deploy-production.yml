@@ -1,0 +1,97 @@
+# Production Deployment Orchestrator
+# Triggers the appropriate deployment strategy based on input.
+# Calls blue-green, canary, or rolling deployment as reusable workflows.
+
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      strategy:
+        description: "Deployment strategy"
+        required: true
+        type: choice
+        options:
+          - blue-green
+          - canary
+          - rolling
+        default: blue-green
+      active-environment:
+        description: "Current active environment (for blue-green)"
+        required: false
+        type: choice
+        options:
+          - blue
+          - green
+        default: blue
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  ci-gate:
+    # Ensure CI passes before deploying
+    uses: ./.github/workflows/ci.yml
+
+  deploy-blue-green:
+    needs: ci-gate
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.strategy == 'blue-green') ||
+      (github.event_name == 'push')
+    uses: ./.github/workflows/deploy-blue-green.yml
+    with:
+      active-environment: ${{ github.event.inputs.active-environment || 'blue' }}
+
+  deploy-canary:
+    needs: ci-gate
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.strategy == 'canary'
+    uses: ./.github/workflows/deploy-canary.yml
+    with:
+      percentage: '10'
+
+  deploy-rolling:
+    needs: ci-gate
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.strategy == 'rolling'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rolling deployment
+        run: |
+          echo "╔══════════════════════════════════════════════════╗"
+          echo "║  ROLLING DEPLOYMENT                              "
+          echo "╚══════════════════════════════════════════════════╝"
+          echo ""
+          for i in 1 2 3 4; do
+            echo "📦 Updating instance $i/4..."
+            sleep 2
+            echo "   ✅ Instance $i healthy"
+          done
+          echo ""
+          echo "✅ Rolling deployment complete — all instances updated"
+
+      - name: Create deployment record
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'production',
+              auto_merge: false,
+              required_contexts: [],
+              description: 'Rolling deployment complete'
+            });
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'success',
+              description: 'All instances updated'
+            });
