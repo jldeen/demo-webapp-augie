@@ -1,1 +1,1 @@
-// commit-marker: feat: add user authentication module
+// commit-marker: feat: implement JWT token generation and validation
