@@ -1,1 +1,1 @@
-// commit-marker: feat: add CORS configuration
+// commit-marker: feat: add request logging with morgan
