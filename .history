@@ -1,1 +1,1 @@
-// commit-marker: refactor: extract route handlers into controllers
+// commit-marker: feat: add pagination utility for list endpoints
