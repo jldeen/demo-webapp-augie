@@ -1,1 +1,1 @@
-// commit-marker: fix: correct status code for duplicate user creation
+// commit-marker: feat: add graceful shutdown handling
