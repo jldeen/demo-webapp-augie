@@ -16,6 +16,7 @@ app.use(express.json());
 // Routes
 app.use('/api/users', require('./routes/users'));
 app.use('/api/health', require('./routes/health'));
+app.use('/api/search', require('./routes/search'));
 
 // Error handling
 app.use((err, req, res, next) => {
