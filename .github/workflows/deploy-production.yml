@@ -30,6 +30,8 @@ on:
 permissions:
   contents: read
   deployments: write
+  security-events: write
+  actions: read
 
 jobs:
   ci-gate:
