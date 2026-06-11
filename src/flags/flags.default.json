@@ -1,0 +1,7 @@
+{
+  "dark_mode": { "enabled": true, "value": null, "description": "Enable dark mode UI" },
+  "new_search_algorithm": { "enabled": false, "value": "v2", "description": "Use v2 search with fuzzy matching" },
+  "rate_limiting": { "enabled": true, "value": 100, "description": "API rate limit per minute" },
+  "beta_user_profiles": { "enabled": false, "value": null, "description": "New profile page layout (beta)" },
+  "ai_suggestions": { "enabled": false, "value": "gpt-4", "description": "AI-powered search suggestions" }
+}

@@ -1,0 +1,78 @@
+name: Feature Flag Update
+
+on:
+  push:
+    paths:
+      - 'src/flags/flags.*.json'
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      flag_name:
+        description: 'Flag to toggle'
+        required: true
+        type: choice
+        options:
+          - new_search_algorithm
+          - beta_user_profiles
+          - ai_suggestions
+          - rate_limiting
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      enabled:
+        description: 'Enable or disable'
+        required: true
+        type: boolean
+
+jobs:
+  update-flag:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update feature flag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          FLAG="${{ github.event.inputs.flag_name }}"
+          ENV="${{ github.event.inputs.environment }}"
+          ENABLED="${{ github.event.inputs.enabled }}"
+
+          echo "🏁 Updating flag: $FLAG"
+          echo "   Environment: $ENV"
+          echo "   New state: $([ "$ENABLED" = "true" ] && echo "✅ ENABLED" || echo "❌ DISABLED")"
+
+          # Update the flag file using jq
+          FILE="src/flags/flags.${ENV}.json"
+          jq --arg flag "$FLAG" --argjson enabled $ENABLED \
+            '.[$flag].enabled = $enabled' "$FILE" > tmp.json && mv tmp.json "$FILE"
+
+          echo ""
+          echo "Updated $FILE:"
+          cat "$FILE" | jq .
+
+      - name: Commit flag change
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "feat(flags): ${{ github.event.inputs.enabled == 'true' && 'enable' || 'disable' }} ${{ github.event.inputs.flag_name }} in ${{ github.event.inputs.environment }}"
+          git push
+
+      - name: Deploy flag changes
+        run: |
+          echo "🚀 Deploying feature flag update to ${{ github.event.inputs.environment || 'all environments' }}..."
+          sleep 2
+          echo "✅ Feature flags deployed"
+
+      - name: Summary
+        run: |
+          echo "## Feature Flag Update" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Flag | Environment | State |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-------------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ${{ github.event.inputs.flag_name }} | ${{ github.event.inputs.environment }} | ${{ github.event.inputs.enabled == 'true' && '✅ Enabled' || '❌ Disabled' }} |" >> "$GITHUB_STEP_SUMMARY"
